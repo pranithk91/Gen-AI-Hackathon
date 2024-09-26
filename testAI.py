@@ -7,10 +7,7 @@ from langchain.memory import ConversationBufferMemory
 from langchain.schema import Document
 from taipy.gui import Gui, notify
 
-# API Key
-os.environ["OPENAI_API_KEY"] = "sk-svcacct-e1Mf-ln-AV_N9D6hVR0eLRbt2b368J8GV7UHq99g-8pWZx5pxo5JgsFVyDzuFScT3BlbkFJ8N33U30wejnMAuDOm-3fguAcc4nL59ciLYH2kUxDGMw71aRruaU5NEEUjl_OD5QA"
 
-#client = OpenAI(api_key="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")
 
 # Sample property data
 sample_properties = [
