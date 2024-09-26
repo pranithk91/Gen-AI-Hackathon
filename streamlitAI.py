@@ -11,7 +11,7 @@ import os
 
 
 api_key = api_key_upload()
-
+print(api_key)
 # Set your OpenAI API key
 os.environ["OPENAI_API_KEY"] = api_key
 
