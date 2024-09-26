@@ -1,26 +1,19 @@
-# app.py
-import os
+import streamlitAI as st
 import pandas as pd
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.vectorstores import FAISS
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from langchain.llms import OpenAI
-import taipy as tp
-from taipy.gui import Gui, notify
 
-from get_api_key import select_file_and_read_first_line, first_line
-
+from get_api_key import select_file_and_read_first_line
+import os
 
 
 api_key = select_file_and_read_first_line()
-
-print(api_key)
-
-#with open('your_file.txt', 'r') as file:
-#    first_line = file.readline().strip()  # Using .strip() to remove any trailing newline or spaces
-
+# Set your OpenAI API key
 os.environ["OPENAI_API_KEY"] = api_key
+
 
 # Load sample property dataset
 def load_sample_data():
@@ -66,18 +59,17 @@ prompt = PromptTemplate(
 
 # Function to get property recommendations
 def get_property_recommendations(user_query, data_frame, faiss_index):
+    # Get FAISS search results
     search_results = faiss_index.similarity_search(user_query, k=3)  # Top 3 results
-    results_df = data_frame.iloc[[result["index"] for result in search_results]]
+    # Extract relevant rows using index values from search results
+    result_indices = [result['index'] for result in search_results]
     
-    properties_str = results_df.to_string(index=False)  # Convert DataFrame to readable format
-    
-    # Create LLM Chain
-    llm = OpenAI(model="text-davinci-003", temperature=0.7)
-    chain = LLMChain(llm=llm, prompt=prompt)
-    
-    # Generate response with recommendations
-    response = chain.run(user_preferences=user_query, properties=properties_str)
-    return results_df  # Return the DataFrame for display in Taipy
+    # Ensure we have valid indices and extract rows from the DataFrame
+    if result_indices:
+        results_df = data_frame.iloc[result_indices]
+        return results_df.to_dict(orient='records')  # Return results as a list of dictionaries
+    else:
+        return []  # Return empty list if no results found
 
 # Prepare embeddings for property data
 def prepare_embeddings(data_frame):
@@ -92,43 +84,40 @@ def prepare_embeddings(data_frame):
 df = load_sample_data()
 faiss_index = prepare_embeddings(df)
 
-# State variables to hold the user prompt and recommendations
-user_prompt = ""
-recommendations = []
+# Streamlit chatbot UI
+st.title("Property Recommendation Chat Bot")
 
-# Function triggered when the user submits their prompt
-def on_user_submit(state):
-    global recommendations
-    if not state.user_prompt:
-        notify(state, "error", "Please enter a valid property preference.")
+# Chat History storage
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+
+# Input field for user to ask for recommendations
+user_input = st.text_input("You:", key="user_input")
+
+if user_input:
+    # Add user input to chat history
+    st.session_state.chat_history.append(f"User: {user_input}")
+
+    # Get recommendations based on the user input
+    recommendations = get_property_recommendations(user_input, df, faiss_index)
+
+    # Format the chatbot's response
+    if recommendations:
+        bot_response = "Here are some properties I found for you:\n"
+        for rec in recommendations:
+            bot_response += f"- **Location**: {rec['location']}, **Price**: {rec['price']} USD, **Bedrooms**: {rec['bedrooms']}, **Type**: {rec['type']}\n"
     else:
-        recommendations = get_property_recommendations(state.user_prompt, df, faiss_index).to_dict(orient='records')
-        notify(state, "success", "Recommendations updated.")
+        bot_response = "Sorry, I couldn't find any matching properties."
 
-# Taipy GUI layout with user input and recommendation display
-page = """
-# Property Recommendation Bot
+    # Add bot response to chat history
+    st.session_state.chat_history.append(f"Bot: {bot_response}")
 
-## Enter your preferences for a property:
+    # Clear the input field
+    st.session_state.user_input = ""
 
-<|{user_prompt}|input|label=User Preferences|>
-
-<|Submit|button|on_action=on_user_submit|>
-
-## Recommended Properties:
-
-<|for rec in recommendations|>
-
-<|card
-### {rec['location']}
-- Price: {rec['price']} USD
-- Bedrooms: {rec['bedrooms']}
-- Type: {rec['type']}
-|>
-
-<|endfor|>
-"""
-
-# Run the Taipy app
-if __name__ == "__main__":
-    Gui(page).run()
+# Display the chat history
+for message in st.session_state.chat_history:
+    if message.startswith("User:"):
+        st.write(f"**{message}**")
+    else:
+        st.markdown(message)
