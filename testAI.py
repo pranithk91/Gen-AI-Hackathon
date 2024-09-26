@@ -1,45 +1,45 @@
 import os
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import FAISS
-from langchain.chat_models import ChatOpenAI
+import sys
+from PyQt6.QtWidgets import QApplication, QMainWindow, QTextEdit, QLineEdit, QPushButton, QVBoxLayout, QWidget
+import pandas as pd
+import csv
+# Import LangChain-related modules
+from langchain_openai import OpenAIEmbeddings
+from langchain_community.vectorstores import FAISS
+from langchain_openai import ChatOpenAI
 from langchain.chains import ConversationalRetrievalChain
 from langchain.memory import ConversationBufferMemory
 from langchain.schema import Document
-from taipy.gui import Gui, notify
 
+# Function to read API key from file
+from get_api_key import select_file_and_read_first_line
 
+# Set OpenAI API key
+api_key = select_file_and_read_first_line()
+os.environ["OPENAI_API_KEY"] = api_key
 
 # Sample property data
-sample_properties = [
-  {"id": 1, "type": "House", "bedrooms": 3, "bathrooms": 2, "price": 350000, "location": "New York", "features": "Garden"},
-  {"id": 2, "type": "Apartment", "bedrooms": 2, "bathrooms": 1, "price": 250000, "location": "Los Angeles", "features": "Balcony"},
-  {"id": 3, "type": "Condo", "bedrooms": 1, "bathrooms": 1, "price": 180000, "location": "Miami", "features": "Pool"},
-  {"id": 4, "type": "House", "bedrooms": 4, "bathrooms": 3, "price": 450000, "location": "Miami", "features": "Garage"},
-  {"id": 5, "type": "Townhouse", "bedrooms": 3, "bathrooms": 2, "price": 320000, "location": "New York", "features": "Rooftop Terrace"},
-  {"id": 6, "type": "House", "bedrooms": 5, "bathrooms": 4, "price": 550000, "location": "Los Angeles", "features": "Fireplace"},
-  {"id": 7, "type": "Apartment", "bedrooms": 1, "bathrooms": 1, "price": 200000, "location": "New York", "features": "City View"},
-  {"id": 8, "type": "Condo", "bedrooms": 2, "bathrooms": 2, "price": 280000, "location": "Miami", "features": "Gym"},
-  {"id": 9, "type": "House", "bedrooms": 3, "bathrooms": 2, "price": 380000, "location": "Los Angeles", "features": "Swimming Pool"},
-  {"id": 10, "type": "Townhouse", "bedrooms": 2, "bathrooms": 1, "price": 270000, "location": "New York", "features": "Patio"},
-  {"id": 11, "type": "Apartment", "bedrooms": 3, "bathrooms": 2, "price": 300000, "location": "Los Angeles", "features": "Doorman"},
-  {"id": 12, "type": "House", "bedrooms": 4, "bathrooms": 3, "price": 420000, "location": "Miami", "features": "Solar Panels"},
-  {"id": 13, "type": "Condo", "bedrooms": 1, "bathrooms": 1, "price": 190000, "location": "New York", "features": "Storage Unit"},
-  {"id": 14, "type": "House", "bedrooms": 5, "bathrooms": 4, "price": 580000, "location": "Los Angeles", "features": "Home Theater"},
-  {"id": 15, "type": "Apartment", "bedrooms": 2, "bathrooms": 1, "price": 230000, "location": "Miami", "features": "Fitness Center"},
-  {"id": 16, "type": "Townhouse", "bedrooms": 3, "bathrooms": 2, "price": 340000, "location": "New York", "features": "Community Pool"},
-  {"id": 17, "type": "House", "bedrooms": 4, "bathrooms": 3, "price": 470000, "location": "Los Angeles", "features": "Backyard"},
-  {"id": 18, "type": "Condo", "bedrooms": 2, "bathrooms": 2, "price": 260000, "location": "Miami", "features": "Concierge"},
-  {"id": 19, "type": "Apartment", "bedrooms": 1, "bathrooms": 1, "price": 210000, "location": "New York", "features": "In-unit Laundry"},
-  {"id": 20, "type": "House", "bedrooms": 3, "bathrooms": 2, "price": 390000, "location": "Los Angeles", "features": "Screened Porch"}
-]
+# Function to convert CSV to a list of dictionaries
+def csv_to_dict_list(csv_file_path):
+    with open(csv_file_path, mode='r', newline='', encoding='utf-8-sig') as file:
+        reader = csv.DictReader(file)  # Read rows into dictionaries
+        data_list = [dict(row) for row in reader]  # Convert each row into a dictionary
+    return data_list
+
+
+csv_file_path = 'properties.csv'
+sample_properties = csv_to_dict_list(csv_file_path)
+
 
 # Convert sample data to documents
+
 documents = [
     Document(
-        page_content=f"Property ID: {prop['id']}\nType: {prop['type']}\nBedrooms: {prop['bedrooms']}\n"
-                     f"Bathrooms: {prop['bathrooms']}\nPrice: ${prop['price']}\nLocation: {prop['location']}\n"
-                     f"Features: {prop['features']}",
-        metadata={"source": f"property_{prop['id']}"}
+        page_content=f"Property ID: {prop['Name']}\nYear Built: {prop['Year Built']}\nBedrooms: {prop['Bedrooms']}\n"
+                     f"Bathrooms: {prop['Bathrooms']}\nRent: ${prop['Rent']}\nLocation: {prop['Zipcode']}\n"
+                     f"Street: {prop['Street']}\nCity: {prop['City']}\nState:{prop['State']}\n"
+                     f"County: {prop['County']}\nPool: {prop['Swimming Pool']}\nSize: ${prop['Square Feet']}\nLeasable: {prop['Leasable']}",
+        metadata={"source": f"property_{prop['Name']}"}
     ) for prop in sample_properties
 ]
 
@@ -65,33 +65,62 @@ def chat_with_bot(query):
     result = qa_chain({"question": query})
     return result["answer"]
 
+# PyQt6 chatbot interface
+class ChatbotWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
 
-user_input = ""
-chat_history = "Property Recommendation Bot: Hello! I can help you find properties. What kind of property are you looking for?\n\n"
+        self.setWindowTitle("Property Recommendation Chat Bot")
+        self.setGeometry(300, 300, 600, 400)
 
-page = """
-<|layout|columns=340px 1fr|
-<|part|render=True|
-# Property Recommendation Bot
-<|{user_input}|input|label=Enter your question:|>
-<|Ask|button|on_action=ask_bot|>
-|>
-<|part|render=True|
-<|{chat_history}|markdown|height=500px|
-|>
-|>
-"""
+        # Main widget
+        self.central_widget = QWidget()
+        self.setCentralWidget(self.central_widget)
 
-def ask_bot(state):
-    if state.user_input:
-        response = chat_with_bot(state.user_input)
-        state.chat_history += f"You: {state.user_input}\n\n"
-        state.chat_history += f"Property Recommendation Bot: {response}\n\n"
-        state.user_input = ""  # Clear the input field
-        notify(state, "info", "Bot has responded!")
-    else:
-        notify(state, "warning", "Please enter a question!")
+        # Layout for the chat interface
+        layout = QVBoxLayout()
+
+        # Text area for the conversation
+        self.chat_area = QTextEdit(self)
+        self.chat_area.setReadOnly(True)
+        layout.addWidget(self.chat_area)
+
+        # Input field for user to type their message
+        self.input_field = QLineEdit(self)
+        layout.addWidget(self.input_field)
+
+        # Submit button
+        self.submit_button = QPushButton("Send", self)
+        layout.addWidget(self.submit_button)
+
+        # Set layout to the central widget
+        self.central_widget.setLayout(layout)
+
+        # Connect button click to the bot response
+        self.submit_button.clicked.connect(self.handle_user_input)
+
+    def handle_user_input(self):
+        # Get user input
+        user_input = self.input_field.text()
+
+        # Add user input to chat area
+        self.chat_area.append(f"You: {user_input}")
+
+        # Get the bot's response based on the input
+        bot_response = chat_with_bot(user_input)
+
+        # Add bot response to chat area
+        self.chat_area.append(f"Bot: {bot_response}\n")
+
+        # Clear the input field for the next message
+        self.input_field.clear()
+
+# Main application loop
+def main():
+    app = QApplication(sys.argv)
+    chatbot_window = ChatbotWindow()
+    chatbot_window.show()
+    sys.exit(app.exec())
 
 if __name__ == "__main__":
-    gui = Gui(page)
-    gui.run(use_reloader=True)
+    main()
