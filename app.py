@@ -15,10 +15,8 @@ from get_api_key import select_file_and_read_first_line, first_line
 
 api_key = select_file_and_read_first_line()
 
-print(api_key)
 
-#with open('your_file.txt', 'r') as file:
-#    first_line = file.readline().strip()  # Using .strip() to remove any trailing newline or spaces
+
 
 os.environ["OPENAI_API_KEY"] = api_key
 
