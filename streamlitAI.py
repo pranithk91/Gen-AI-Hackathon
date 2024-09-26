@@ -6,11 +6,11 @@ from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from langchain.llms import OpenAI
 
-from streamlitUpload import first_line
+from streamlitUpload import api_key_upload
 import os
 
 
-api_key = first_line
+api_key = api_key_upload()
 
 # Set your OpenAI API key
 os.environ["OPENAI_API_KEY"] = api_key
