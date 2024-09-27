@@ -10,10 +10,10 @@ from streamlitUpload import api_key_upload
 import os
 
 
-api_key = api_key_upload()
-st.write(api_key)
+"""api_key = api_key_upload()
+st.write(api_key)"""
 # Set your OpenAI API key
-os.environ["OPENAI_API_KEY"] = api_key
+os.environ["OPENAI_API_KEY"] = "sk-svcacct-e1Mf-ln-AV_N9D6hVR0eLRbt2b368J8GV7UHq99g-8pWZx5pxo5JgsFVyDzuFScT3BlbkFJ8N33U30wejnMAuDOm-3fguAcc4nL59ciLYH2kUxDGMw71aRruaU5NEEUjl_OD5QA"
 
 
 # Load sample property dataset
