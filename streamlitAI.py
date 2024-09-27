@@ -95,7 +95,7 @@ if "chat_history" not in st.session_state:
 # Input field for user to ask for recommendations
 user_input = st.text_input("You:", key="user_input")
 
-if user_input:
+"""if user_input:
     # Add user input to chat history
     st.session_state.chat_history.append(f"User: {user_input}")
 
@@ -114,7 +114,7 @@ if user_input:
     st.session_state.chat_history.append(f"Bot: {bot_response}")
 
     # Clear the input field
-    st.session_state.user_input = ""
+    st.session_state.user_input = """""
 
 # Display the chat history
 for message in st.session_state.chat_history:
@@ -122,3 +122,24 @@ for message in st.session_state.chat_history:
         st.write(f"**{message}**")
     else:
         st.markdown(message)
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+if prompt := st.chat_input("What is up?"):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    recommendations = get_property_recommendations(user_input, df, faiss_index)
+
+    # Format the chatbot's response
+    if recommendations:
+        bot_response = "Here are some properties I found for you:\n"
+        for rec in recommendations:
+            bot_response += f"- **Location**: {rec['location']}, **Price**: {rec['price']} USD, **Bedrooms**: {rec['bedrooms']}, **Type**: {rec['type']}\n"
+    else:
+        bot_response = "Sorry, I couldn't find any matching properties."
+    
+    response = st.write_stream(bot_response)
+    st.session_state.messages.append({"role": "assistant", "content": response})
